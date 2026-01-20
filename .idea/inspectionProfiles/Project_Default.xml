@@ -1,0 +1,36 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="Click" />
+          <option value="Flask" />
+          <option value="Flask-SQLAlchemy" />
+          <option value="itsdangerous" />
+          <option value="Jinja2" />
+          <option value="MarkupSafe" />
+          <option value="SQLAlchemy" />
+          <option value="Werkzeug" />
+          <option value="flask" />
+          <option value="mutagen" />
+          <option value="fuzzywuzzy" />
+          <option value="levenshtein" />
+          <option value="aiohttp" />
+          <option value="pystray" />
+          <option value="pillow" />
+          <option value="plyer" />
+          <option value="python-dotenv" />
+          <option value="wikipedia" />
+          <option value="librosa" />
+          <option value="python-vlc" />
+          <option value="ffcuesplitter" />
+          <option value="qdarkstyle" />
+          <option value="unidecode" />
+          <option value="mediafile" />
+          <option value="beets" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
