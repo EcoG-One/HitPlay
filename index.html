@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HitPlay</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="/_sdk/element_sdk.js"></script>
+  <!--<script src="/_sdk/element_sdk.js"></script> -->
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
   <style>
     body {
@@ -105,6 +105,9 @@
     <button onclick="stopAudio()" id="stop-btn"
       class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
       style="background-color: #ffffff; color: #92400e;"> 🔀 Stop Music </button>
+    <button onclick="changeFolder()" id="change-folder-btn"
+      class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+      style="background-color: #ffffff; color: #92400e;"> Change Folder </button>
     </div>  
       <!-- Score and Timer Display -->
       <div class="flex items-center gap-6 mb-4">
@@ -228,6 +231,24 @@
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
+      }
+    }
+
+    async function changeFolder() {
+      try {
+        const response = await fetch('/change-folder', { cache: 'no-store' });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || `Change folder failed (${response.status})`);
+        }
+        currentIndex = 0;
+        viewedCards.clear();
+        score = 0;
+        updateScore();
+        resetCardFlip();
+        await loadFlashcards();
+      } catch (error) {
+        console.error('Failed to change folder', error);
       }
     }
 
@@ -554,5 +575,6 @@
     }
     loadFlashcards();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9bc9cc0e960d9c0c',t:'MTc2ODE5MDk1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <!-- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9bc9cc0e960d9c0c',t:'MTc2ODE5MDk1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script> -->
+ </body>
 </html>
