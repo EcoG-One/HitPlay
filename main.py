@@ -4,14 +4,14 @@ Script to generate flashcards array from audio files in the music folder.
 Extracts metadata (artist, title, year) from audio files and creates flashcard entries.
 """
 import webbrowser
-from PySide6.QtCore import QObject, Qt, QMetaObject, Slot
+import threading
+from PySide6.QtCore import QObject, Qt, QMetaObject, Signal, Slot
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 import argparse
 import json
 import os
 import sys
 import random
-from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
@@ -194,13 +194,22 @@ def make_handler(base_dir, state):
                 try:
                     runner = state.get("dialog_runner")
                     if runner:
-                        new_folder = QMetaObject.invokeMethod(
-                            runner, "choose_folder", Qt.BlockingQueuedConnection
+                        event = threading.Event()
+                        result = {"value": ""}
+
+                        def on_selected(path):
+                            result["value"] = path
+                            event.set()
+
+                        runner.folder_selected.connect(on_selected, Qt.QueuedConnection)
+                        QMetaObject.invokeMethod(
+                            runner, "choose_folder", Qt.QueuedConnection
                         )
+                        event.wait(timeout=120)
+                        runner.folder_selected.disconnect(on_selected)
+                        new_folder = result["value"]
                     else:
                         new_folder = select_directory_dialog()
-                    if not isinstance(new_folder, str):
-                        new_folder = ""
                     if new_folder:
                         state["music_dir"] = new_folder
                         state["settings"]["music_folder"] = new_folder
@@ -239,7 +248,12 @@ def serve_directory(directory, host, port, state):
     print(
         f"Serving music files from {state['music_dir']} at http://{host}:{port}/music/"
     )
-    server.serve_forever()
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+
+    def fin():
+        server.shutdown()
 
 
 def main():
@@ -326,9 +340,12 @@ class AppWindow(QMainWindow):
 
 
 class DialogRunner(QObject):
-    @Slot(result=str)
+    folder_selected = Signal(str)
+
+    @Slot()
     def choose_folder(self):
-        return select_directory_dialog() or ""
+        folder = select_directory_dialog() or ""
+        self.folder_selected.emit(folder)
 
 
 if __name__ == "__main__":
