@@ -1,2 +1,2 @@
 mutagen
-pyside6
+pygetwindow

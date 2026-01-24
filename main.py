@@ -13,6 +13,7 @@ import os
 import sys
 import random
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import pygetwindow as gw
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 from mutagen.flac import FLAC
@@ -48,14 +49,23 @@ def select_directory_dialog():
     selected_directory = None
     file_dialog = QFileDialog()
     file_dialog.setWindowTitle("Select Directory")
+    file_dialog.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+    file_dialog.setWindowModality(Qt.ApplicationModal)
     file_dialog.setFileMode(QFileDialog.FileMode.Directory)
     file_dialog.setViewMode(QFileDialog.ViewMode.List)
+    browser = gw.getActiveWindow()
+    browser.minimize()
+    window.show()
+    launcher = gw.getWindowsWithTitle("HitPlayLauncher")[0]
+    launcher.maximize()
     if file_dialog.exec():
         selected_directory = file_dialog.selectedFiles()[0]
     else:
         QMessageBox.information(
             window, "Info!", "You cancelled the directory selection."
         )
+    window.hide()
+    browser.restore()
     return selected_directory
 
 
@@ -335,7 +345,7 @@ class AppWindow(QMainWindow):
         super().__init__()
         self.worker = None
         self.dialog_runner = DialogRunner()
-        self.setWindowTitle("HitPlay")
+        self.setWindowTitle("HitPlayLauncher")
         self.setGeometry(500, 100, 500, 400)
 
 
@@ -352,6 +362,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     window = AppWindow()
-    window.show()
+    # window.show()
     main()
     sys.exit(app.exec())
