@@ -16,6 +16,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import pygetwindow as gw
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
+from urllib.request import Request, urlopen
 from mutagen.flac import FLAC
 from mutagen.easyid3 import EasyID3
 from mutagen.wave import WAVE
@@ -27,6 +28,9 @@ EMOJIS = [
     "🕺", "💃", "🙌", "👏", "✌️", "🤘", "🎯", "🏆", "🥇", "🌈",
     "☀️", "🌙", "⚡", "🌊", "🌸", "🦋", "🐝", "🎭", "🎪", "🎨"
 ]
+
+MUSICBRAINZ_RECORDING_URL = "https://musicbrainz.org/ws/2/recording/"
+MUSICBRAINZ_USER_AGENT = "HitPlay/1.0 (local script)"
 
 
 def load_json(path: Path, default):
@@ -69,6 +73,41 @@ def select_directory_dialog():
     return selected_directory
 
 
+def _extract_year(date_str):
+    if not date_str:
+        return ""
+    year = date_str.split("-")[0]
+    if len(year) == 4 and year.isdigit():
+        return year
+    return ""
+
+
+def fetch_musicbrainz_year(artist, title):
+    if not artist or not title:
+        return ""
+    query = f'artist:"{artist}" AND recording:"{title}"'
+    url = f"{MUSICBRAINZ_RECORDING_URL}?query={quote(query)}&fmt=json&limit=5&inc=releases"
+    try:
+        request = Request(url, headers={"User-Agent": MUSICBRAINZ_USER_AGENT})
+        with urlopen(request, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        print(f"Warning: MusicBrainz lookup failed for {artist} - {title}: {e}")
+        return ""
+
+    best_year = ""
+    for recording in data.get("recordings", []):
+        year = _extract_year(recording.get("first-release-date", ""))
+        if not year:
+            for release in recording.get("releases", []) or []:
+                year = _extract_year(release.get("date", ""))
+                if year:
+                    break
+        if year and (not best_year or year < best_year):
+            best_year = year
+    return best_year
+
+
 def get_audio_metadata(file_path):
     """
     Extract artist, title, and year from audio file metadata.
@@ -95,6 +134,10 @@ def get_audio_metadata(file_path):
             year = ''
         else:
             return None
+
+        musicbrainz_year = fetch_musicbrainz_year(artist.strip(), title.strip())
+        if musicbrainz_year:
+            year = musicbrainz_year
 
         # Clean up year (make sure it's 4 digits or empty)
         if year and not year.isdigit():
@@ -322,7 +365,7 @@ def main():
         "--serve", action="store_true", help="Start a local web server."
     )
     parser.add_argument(
-        "--host", default="127.0.0.1", help="Server host (default: 127.0.0.1)."
+        "--host", default="localhost", help="Server host (default: localhost)."
     )
     parser.add_argument(
         "--port", type=int, default=8000, help="Server port (default: 8000)."
