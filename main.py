@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import random
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import pygetwindow as gw
 from pathlib import Path
@@ -30,7 +31,7 @@ EMOJIS = [
 ]
 
 MUSICBRAINZ_RECORDING_URL = "https://musicbrainz.org/ws/2/recording/"
-MUSICBRAINZ_USER_AGENT = "HitPlay/1.0 (local script)"
+MUSICBRAINZ_USER_AGENT = "HitPlay/1.0 (ecog@outlook.de)"
 
 
 def load_json(path: Path, default):
@@ -85,18 +86,42 @@ def _extract_year(date_str):
 def fetch_musicbrainz_year(artist, title):
     if not artist or not title:
         return ""
-    query = f'artist:"{artist}" AND recording:"{title}"'
-    url = f"{MUSICBRAINZ_RECORDING_URL}?query={quote(query)}&fmt=json&limit=5&inc=releases"
-    try:
-        request = Request(url, headers={"User-Agent": MUSICBRAINZ_USER_AGENT})
-        with urlopen(request, timeout=5) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except Exception as e:
-        print(f"Warning: MusicBrainz lookup failed for {artist} - {title}: {e}")
-        return ""
+    query = (
+        f'artist:"{artist}" AND recording:"{title}" AND NOT release-group:compilation'
+    )
+    url = f"{MUSICBRAINZ_RECORDING_URL}?query={quote(query)}&fmt=json&inc=releases"
+    for attempt in range(2):
+        try:
+            request = Request(url, headers={"User-Agent": MUSICBRAINZ_USER_AGENT})
+            with urlopen(request, timeout=5) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            break
+        except Exception as e:
+            is_reset = (
+                getattr(e, "winerror", None) == 10054
+                or "[WinError 10054]" in str(e)
+            )
+            is_503 = "HTTP Error 503: Service Temporarily Unavailable" in str(e)
+            if (is_reset or is_503) and attempt == 0:
+                print(str(e))
+                print("Retrying MusicBrainz lookup after a short delay...")
+                if is_503:
+                    time.sleep(1)
+                else:
+                    time.sleep(0.5)
+                continue
+            print(f"Warning: MusicBrainz lookup failed for {artist} - {title}: {e}")
+            return ""
 
     best_year = ""
     for recording in data.get("recordings", []):
+        release = recording.get("releases", [])
+        release_group = release[0].get("release-group", [])
+        secondary_types = release_group.get("secondary-types", [])
+        for secondary_type in secondary_types:
+            if secondary_type in ["Compilation", "Live", "Remix", "DJ-mix", "Mixtape/Street", "Demo"]:
+                continue
+
         year = _extract_year(recording.get("first-release-date", ""))
         if not year:
             for release in recording.get("releases", []) or []:
@@ -135,6 +160,7 @@ def get_audio_metadata(file_path):
         else:
             return None
 
+        time.sleep(1)
         musicbrainz_year = fetch_musicbrainz_year(artist.strip(), title.strip())
         if musicbrainz_year:
             year = musicbrainz_year
@@ -200,9 +226,9 @@ def generate_flashcards(music_folder):
             }
         )
 
-        print(f"✓ {filename}")
-        print(f"  Definition: {definition}")
-        print(f"  Emoji: {emoji}\n")
+       # print(f"✓ {filename}")
+       # print(f"  Definition: {definition}")
+       # print(f"  Emoji: {emoji}\n")
 
     return flashcards
 
@@ -350,13 +376,13 @@ def main():
     # Format as JavaScript
     js_code = format_flashcards_js(flashcards)
 
-    print("JavaScript array to insert at line 136 of HitPlay.html:\n")
-    print(js_code)
-    print("\n")
+    # print("JavaScript array to insert at line 136 of HitPlay.html:\n")
+    # print(js_code)
+    # print("\n")
 
     # Also generate JSON for reference
-    print("JSON representation (for reference):\n")
-    print(json.dumps(flashcards, indent=2))
+    # print("JSON representation (for reference):\n")
+    # print(json.dumps(flashcards, indent=2))
     json.dumps(flashcards, indent=2)
 
     write_flashcards_json(flashcards, json_file)
