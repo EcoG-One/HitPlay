@@ -248,8 +248,9 @@ def get_audio_metadata(file_path):
         elif ext in ['.wav']:
             audio = WAVE(file_path)
             # WAV files may not have standard metadata
-            artist = 'Unknown Artist'
-            title = 'Unknown Title'
+            artist = os.path.basename(file_path)
+            artist = os.path.splitext(artist)[1]
+            title = ''
             year = ''
         else:
             return None
