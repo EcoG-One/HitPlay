@@ -5,6 +5,7 @@ Extracts metadata (artist, title, year) from audio files and creates flashcard e
 """
 import webbrowser
 import threading
+import re
 from PySide6.QtCore import QObject, Qt, QMetaObject, Signal, Slot
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 import argparse
@@ -16,7 +17,7 @@ import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import pygetwindow as gw
 from pathlib import Path
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit, urlencode
 from urllib.request import Request, urlopen
 from mutagen.flac import FLAC
 from mutagen.easyid3 import EasyID3
@@ -32,6 +33,8 @@ EMOJIS = [
 
 MUSICBRAINZ_RECORDING_URL = "https://musicbrainz.org/ws/2/recording/"
 MUSICBRAINZ_USER_AGENT = "HitPlay/1.0 (ecog@outlook.de)"
+WIKIPEDIA_API_URL = "https://en.wikipedia.org/w/api.php"
+WIKIPEDIA_USER_AGENT = "HitPlay/1.0 (ecog@outlook.de)"
 
 
 def load_json(path: Path, default):
@@ -81,6 +84,91 @@ def _extract_year(date_str):
     if len(year) == 4 and year.isdigit():
         return year
     return ""
+
+
+def _extract_year_from_text(text):
+    if not text:
+        return ""
+    match = re.search(r"\b(19[0-9]{2}|20[0-9]{2})\b", str(text))
+    return match.group(0) if match else ""
+
+
+def _extract_earliest_year_from_text(text):
+    if not text:
+        return ""
+    years = re.findall(r"\b(19[0-9]{2}|20[0-9]{2})\b", str(text))
+    return min(years) if years else ""
+
+
+def fetch_wikipedia_released_year(artist, title):
+    if not artist or not title:
+        return ""
+
+    def _opensearch(query):
+        params = {
+            "action": "opensearch",
+            "search": query,
+            "limit": 10,
+            "namespace": 0,
+            "format": "json",
+        }
+        url = f"{WIKIPEDIA_API_URL}?{urlencode(params)}"
+        request = Request(url, headers={"User-Agent": WIKIPEDIA_USER_AGENT})
+        with urlopen(request, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        return data if data and len(data) >= 2 else ["", []]
+
+    search_term = title
+    try:
+        data = _opensearch(search_term)
+        titles = data[1]
+        if not titles:
+            return ""
+        if len(titles) > 1:
+            data = _opensearch(f"{title} (song)")
+            titles = data[1]
+        if len(titles) > 1:
+            data = _opensearch(f"{title} ({artist} song)")
+            titles = data[1]
+        if not titles:
+            return ""
+        page_title = titles[0]
+
+        params = {
+            "action": "query",
+            "prop": "revisions",
+            "rvprop": "content",
+            "rvslots": "main",
+            "titles": page_title,
+            "format": "json",
+        }
+        url = f"{WIKIPEDIA_API_URL}?{urlencode(params)}"
+        request = Request(url, headers={"User-Agent": WIKIPEDIA_USER_AGENT})
+        with urlopen(request, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+
+        pages = data.get("query", {}).get("pages", {})
+        page = next(iter(pages.values()), {})
+        revisions = page.get("revisions", [])
+        if not revisions:
+            return ""
+        wikitext = revisions[0].get("slots", {}).get("main", {}).get("*", "")
+        if not wikitext:
+            return ""
+
+        match = re.search(
+            r"^\s*\|\s*released\s*=\s*(.+?)(?=^\s*\|\s*|\n}}\s*$)",
+            wikitext,
+            re.MULTILINE | re.DOTALL,
+        )
+        if not match:
+            return ""
+        released_text = match.group(1)
+        return _extract_earliest_year_from_text(released_text)
+
+    except Exception as e:
+        print(f"Warning: Wikipedia lookup failed for {artist} - {title}: {e}")
+        return ""
 
 
 def fetch_musicbrainz_year(artist, title):
@@ -145,12 +233,18 @@ def get_audio_metadata(file_path):
             audio = FLAC(file_path)
             artist = ' & '.join(audio.get('artist', ['Unknown Artist']))
             title = audio.get('title', ['Unknown Title'])[0]
-            year = audio.get('date', [''])[0].split('-')[0]  # Extract year from date
+            copyright_year = _extract_year_from_text(audio.get('copyright', [''])[0])
+            date_year = _extract_year(audio.get('date', [''])[0])
+            year_candidates = [y for y in [copyright_year, date_year] if y]
+            year = min(year_candidates) if year_candidates else ''
         elif ext in ['.mp3']:
             audio = EasyID3(file_path)
             artist = ' & '.join(audio.get('artist', ['Unknown Artist']))
             title = audio.get('title', ['Unknown Title'])[0]
-            year = audio.get('date', [''])[0].split('-')[0]
+            copyright_year = _extract_year_from_text(audio.get('copyright', [''])[0])
+            date_year = _extract_year(audio.get('date', [''])[0])
+            year_candidates = [y for y in [copyright_year, date_year] if y]
+            year = min(year_candidates) if year_candidates else ''
         elif ext in ['.wav']:
             audio = WAVE(file_path)
             # WAV files may not have standard metadata
@@ -160,10 +254,13 @@ def get_audio_metadata(file_path):
         else:
             return None
 
-        time.sleep(1)
-        musicbrainz_year = fetch_musicbrainz_year(artist.strip(), title.strip())
-        if musicbrainz_year:
-            year = musicbrainz_year
+        wikipedia_year = fetch_wikipedia_released_year(artist.strip(), title.strip())
+        if wikipedia_year:
+            year = min([y for y in [year, wikipedia_year] if y])
+        else:
+            musicbrainz_year = fetch_musicbrainz_year(artist.strip(), title.strip())
+            if musicbrainz_year:
+                year = min([y for y in [year, musicbrainz_year] if y])
 
         # Clean up year (make sure it's 4 digits or empty)
         if year and not year.isdigit():
