@@ -135,7 +135,7 @@
       <button onclick="changeFolder()" id="change-folder-btn"
         class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
         style="background-color: #ffffff; color: #92400e;"> 📁 Change Folder </button>
-    </div>
+    </div>   
     <!-- Score and Timer Display -->
     <div class="flex items-center gap-6 mb-4">
       <div class="text-center px-4 py-2 rounded-full shadow-md" style="background-color: #ffffff;"><span
@@ -160,8 +160,16 @@
         <div class="card-face card-back shadow-2xl"
           style="background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%);"><span class="text-5xl mb-4">✨</span>
           <span class="text-3xl md:text-4xl font-bold text-center" id="card-definition"
-            style="color: #ffffff;">Hello</span> <span class="text-sm mt-4 font-semibold" style="color: #fef3c7;">Click
+            style="color: #ffffff;"></span> <span class="text-sm mt-4 font-semibold" style="color: #fef3c7;">Click
             to flip back</span>
+        </div>
+      </div>
+      <div class="hidden" id="card-wait"><!-- Please Wait -->
+        <div class="text-center px-4 py-2 rounded-full shadow-md"
+          class="w-full h-full flex flex-col items-center justify-center bg-white bg-opacity-80 rounded-2xl shadow-2xl">
+          <img src="wait.png" alt="Creating Cards">
+          <span class="text-4xl mb-4">⏳</span>
+          <span class="text-xl font-bold" style="color: #1f2937;">Creating Cards. Please Wait...</span>
         </div>
       </div>
     </div><!-- Response Buttons -->
@@ -313,6 +321,15 @@
 
     async function changeFolder() {
       const restoreWindow = minimizeBrowserWindow();
+      var cardNormal = document.getElementById('card-inner');
+      var cardWait = document.getElementById('card-wait');
+      var prevBtn = document.getElementById('prev-btn');
+      var nextBtn = document.getElementById('next-btn');
+      
+      cardNormal.style.display = 'none';
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+      cardWait.style.display = 'block';
       try {
         const response = await fetch('/change-folder', { cache: 'no-store' });
         if (!response.ok) {
@@ -328,6 +345,10 @@
       } catch (error) {
         console.error('Failed to change folder', error);
       } finally {
+        cardWait.style.display = 'none';
+        cardNormal.style.display = 'block';
+        prevBtn.style.display = 'block';
+        nextBtn.style.display = 'block';
         restoreWindow();
       }
     }

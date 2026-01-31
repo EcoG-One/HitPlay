@@ -1,2 +1,6 @@
 mutagen
 pygetwindow
+PySide6
+argparse
+pygetwindow
+pathlib
