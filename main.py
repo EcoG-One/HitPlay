@@ -178,6 +178,7 @@ def fetch_musicbrainz_year(artist, title):
         f'artist:"{artist}" AND recording:"{title}" AND NOT release-group:compilation'
     )
     url = f"{MUSICBRAINZ_RECORDING_URL}?query={quote(query)}&fmt=json&inc=releases"
+    time.sleep(1)  # To respect MusicBrainz rate limiting
     for attempt in range(2):
         try:
             request = Request(url, headers={"User-Agent": MUSICBRAINZ_USER_AGENT})
@@ -204,6 +205,8 @@ def fetch_musicbrainz_year(artist, title):
     best_year = ""
     for recording in data.get("recordings", []):
         release = recording.get("releases", [])
+        if not release:
+            continue
         release_group = release[0].get("release-group", [])
         secondary_types = release_group.get("secondary-types", [])
         for secondary_type in secondary_types:
@@ -237,7 +240,7 @@ def get_audio_metadata(file_path):
             date_year = _extract_year(audio.get('date', [''])[0])
             year_candidates = [y for y in [copyright_year, date_year] if y]
             year = min(year_candidates) if year_candidates else ''
-        elif ext in ['.mp3']:
+        elif ext in ['.mp3', '.ogg']:
             audio = EasyID3(file_path)
             artist = ' & '.join(audio.get('artist', ['Unknown Artist']))
             title = audio.get('title', ['Unknown Title'])[0]
@@ -284,7 +287,7 @@ def generate_flashcards(music_folder):
     flashcards = []
 
     # Supported audio formats
-    supported_formats = {'.flac', '.mp3', '.wav', '.m4a', '.ogg'}
+    supported_formats = {'.flac', '.mp3', '.wav', '.ogg'}
 
     # Get all audio files in the music folder
     audio_files = []
@@ -409,6 +412,8 @@ def make_handler(base_dir, state):
             if request_path.startswith("/music/"):
                 rel = unquote(request_path[len("/music/") :])
                 return str(Path(state["music_dir"]) / rel)
+            if request_path == "/flashcards.json":
+                return str(state["json_file"])
             return super().translate_path(request_path)
 
     return MusicHandler
@@ -437,7 +442,6 @@ def main():
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     html_file = os.path.join(script_dir, "index.html")
-    json_file = Path(script_dir) / "flashcards.json"
     settings_file = Path(script_dir) / "settings.json"
     default = {"music_folder": os.path.join(script_dir, "music")}
     json_settings = load_json(settings_file, default=default)
@@ -447,6 +451,7 @@ def main():
             json_settings[k] = v
 
     music_folder = json_settings.get("music_folder")
+
     if not music_folder or not os.path.isdir(music_folder):
         music_folder = select_directory_dialog()
         if not music_folder:
@@ -457,33 +462,37 @@ def main():
     if not os.path.exists(music_folder):
         print(f"Error: Music folder not found at {music_folder}")
         return
-
-    print(f"Scanning music folder: {music_folder}\n")
+    json_file = Path(music_folder) / "flashcards.json"
+    print(f"Using music folder: {music_folder}")
 
     # Generate flashcards
-    flashcards = generate_flashcards(music_folder)
+    if os.path.isfile(json_file):
+        flashcards = load_json(json_file, default=default)
+    else:
+        print(f"Scanning music folder: {music_folder}\n")
+        flashcards = generate_flashcards(music_folder)
+        print(f"\n{'='*60}")
+        print(f"Generated {len(flashcards)} flashcard entries")
+        print(f"{'='*60}\n")
 
-    if not flashcards:
-        print("No audio files found in music folder!")
-        return
+        # Format as JavaScript
+        js_code = format_flashcards_js(flashcards)
 
-    print(f"\n{'='*60}")
-    print(f"Generated {len(flashcards)} flashcard entries")
-    print(f"{'='*60}\n")
+        # print("JavaScript array to insert at line 136 of HitPlay.html:\n")
+        # print(js_code)
+        # print("\n")
 
-    # Format as JavaScript
-    js_code = format_flashcards_js(flashcards)
+        # Also generate JSON for reference
+        # print("JSON representation (for reference):\n")
+        # print(json.dumps(flashcards, indent=2))
+        json.dumps(flashcards, indent=2)
 
-    # print("JavaScript array to insert at line 136 of HitPlay.html:\n")
-    # print(js_code)
-    # print("\n")
+        write_flashcards_json(flashcards, json_file)
 
-    # Also generate JSON for reference
-    # print("JSON representation (for reference):\n")
-    # print(json.dumps(flashcards, indent=2))
-    json.dumps(flashcards, indent=2)
+        if not flashcards:
+            print("No audio files found in music folder!")
+            return
 
-    write_flashcards_json(flashcards, json_file)
     parser = argparse.ArgumentParser(description="Generate flashcards and serve them.")
     parser.add_argument(
         "--serve", action="store_true", help="Start a local web server."
