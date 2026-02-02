@@ -99,6 +99,14 @@ def _extract_earliest_year_from_text(text):
     years = re.findall(r"\b(19[0-9]{2}|20[0-9]{2})\b", str(text))
     return min(years) if years else ""
 
+def _strip_title_parenthetical_terms(title):
+    if not title:
+        return title
+    terms = r"remix|remastered|anniversary|version|live|single|album|stereo|mono|edition"
+    pattern = re.compile(rf"\s*\([^)]*\b(?:{terms})\b[^)]*\)\s*", re.IGNORECASE)
+    cleaned = re.sub(pattern, " ", title)
+    return re.sub(r"\s{2,}", " ", cleaned).strip()
+
 
 def fetch_wikipedia_released_year(artist, title):
     if not artist or not title:
@@ -235,7 +243,9 @@ def get_audio_metadata(file_path):
         if ext == '.flac':
             audio = FLAC(file_path)
             artist = ' & '.join(audio.get('artist', ['Unknown Artist']))
-            title = audio.get('title', ['Unknown Title'])[0]
+            title = _strip_title_parenthetical_terms(
+                audio.get('title', ['Unknown Title'])[0]
+            )
             copyright_year = _extract_year_from_text(audio.get('copyright', [''])[0])
             date_year = _extract_year(audio.get('date', [''])[0])
             year_candidates = [y for y in [copyright_year, date_year] if y]
@@ -243,7 +253,9 @@ def get_audio_metadata(file_path):
         elif ext in ['.mp3', '.ogg']:
             audio = EasyID3(file_path)
             artist = ' & '.join(audio.get('artist', ['Unknown Artist']))
-            title = audio.get('title', ['Unknown Title'])[0]
+            title = _strip_title_parenthetical_terms(
+                audio.get('title', ['Unknown Title'])[0]
+            )
             copyright_year = _extract_year_from_text(audio.get('copyright', [''])[0])
             date_year = _extract_year(audio.get('date', [''])[0])
             year_candidates = [y for y in [copyright_year, date_year] if y]
@@ -393,6 +405,7 @@ def make_handler(base_dir, state):
                     if new_folder:
                         state["music_dir"] = new_folder
                         state["settings"]["music_folder"] = new_folder
+                        state["json_file"] = Path(new_folder) / "flashcards.json"
                         save_json(state["settings_file"], state["settings"])
                         flashcards = generate_flashcards(new_folder)
                         if flashcards:
@@ -439,16 +452,15 @@ def serve_directory(directory, host, port, state):
 
 
 def main():
+    print(f"\n{'='*60}")
+    print("WELCOME TO HiTPLAY!")
+    print(f"\n{'='*60}\n")
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     html_file = os.path.join(script_dir, "index.html")
     settings_file = Path(script_dir) / "settings.json"
-    default = {"music_folder": os.path.join(script_dir, "music")}
-    json_settings = load_json(settings_file, default=default)
-    # Ensure keys exist
-    for k, v in default.items():
-        if k not in json_settings:
-            json_settings[k] = v
+    # default_music_folder = {"music_folder": os.path.join(script_dir, "music")}
+    json_settings = load_json(settings_file, default={})
 
     music_folder = json_settings.get("music_folder")
 
@@ -467,9 +479,13 @@ def main():
 
     # Generate flashcards
     if os.path.isfile(json_file):
-        flashcards = load_json(json_file, default=default)
+        flashcards = load_json(json_file, default={})
+        print(f"\n{'='*60}")
+        print(f"Loaded {len(flashcards)} flashcard entries from {json_file}")
+        print(f"\n{'='*60}")
     else:
         print(f"Scanning music folder: {music_folder}\n")
+        print("This may take a few moments...")
         flashcards = generate_flashcards(music_folder)
         print(f"\n{'='*60}")
         print(f"Generated {len(flashcards)} flashcard entries")
