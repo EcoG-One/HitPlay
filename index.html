@@ -114,7 +114,7 @@
 </head>
 
 <body id="body" class="h-full m-0 overflow-auto">
-  <div id="app" class="min-h-full w-full flex flex-col items-center justify-center p-6 relative"
+  <div id="app" class="min-h-full w-full flex flex-col items-center justify-center p-6"
     style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%);"><!-- Header -->
     <div class="text-center mb-6 slide-in">
       <h1 id="deck-title" class="text-3xl md:text-4xl font-extrabold mb-2" style="color: #92400e;">HitPlay</h1>
@@ -128,12 +128,14 @@
           style="background-color: #ffffff; color: #92400e;">Game</button>
       </div>
     </div>
-    <div id="player-panel" class="hidden md:block absolute left-6 top-32 w-56 rounded-2xl shadow-lg p-4"
-      style="background-color: #ffffff;">
-      <div class="text-lg font-extrabold mb-3" style="color: #92400e;">Players</div>
-      <div id="player-list" class="flex flex-col gap-2"></div>
-    </div><!-- Game Controls -->
-    <div class="w-full max-w-md mb-4 flex flex-wrap gap-2 justify-center"><button onclick="toggleShuffle()"
+    <div id="game-layout" class="w-full max-w-6xl flex flex-col md:flex-row items-start gap-6">
+      <div id="player-panel" class="hidden w-full md:w-56 rounded-2xl shadow-lg p-4"
+        style="background-color: #ffffff;">
+        <div class="text-lg font-extrabold mb-3" style="color: #92400e;">Players</div>
+        <div id="player-list" class="flex flex-col gap-2"></div>
+      </div>
+      <div id="game-main" class="flex-1 w-full flex flex-col items-center"><!-- Game Controls -->
+        <div class="w-full max-w-md mb-4 flex flex-wrap gap-2 justify-center"><button onclick="toggleShuffle()"
         id="shuffle-btn"
         class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
         style="background-color: #ffffff; color: #92400e;"> 🔀 Shuffle </button>
@@ -146,7 +148,7 @@
       <button onclick="changeFolder()" id="change-folder-btn"
         class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
         style="background-color: #ffffff; color: #92400e;"> 📁 Change Folder </button>
-    </div>   
+        </div>   
 
     <!-- Score and Timer Display -->
     <div class="flex items-center gap-6 mb-4">
@@ -224,6 +226,8 @@
       <button onclick="restart()"
         class="px-6 py-3 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
         style="background-color: #fbbf24; color: #92400e;"> Practice Again 🔄 </button>
+    </div>
+      </div>
     </div>
   </div>
   <script>
