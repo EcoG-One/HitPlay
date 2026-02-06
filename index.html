@@ -117,8 +117,8 @@
   <div id="app" class="min-h-full w-full flex flex-col items-center justify-center p-6"
     style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%);"><!-- Header -->
     <div class="text-center mb-6 slide-in">
-      <h1 id="deck-title" class="text-3xl md:text-4xl font-extrabold mb-2" style="color: #92400e;">HitPlay</h1>
-      <h3 id="deck-subtitle" class="text-xl md:text-xl font-extrabold mb-2" style="color: #92400e;">by EcoG</h3>
+      <h1 id="deck-title" class="text-3xl md:text-4xl font-extrabold mb-2" style="color: #92400e;">HitPlay
+      <span id="deck-subtitle" class="text-xl md:text-xl font-extrabold mb-1" style="color: #92400e;">by EcoG</span></h1>
       <div class="mt-4 flex flex-wrap gap-2 justify-center">
         <button onclick="setMode('practice')" id="practice-mode-btn"
           class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
@@ -126,46 +126,52 @@
         <button onclick="setMode('game')" id="game-mode-btn"
           class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
           style="background-color: #ffffff; color: #92400e;">Game</button>
+        <button onclick="toggleTimer()" id="timer-btn"
+          class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          style="background-color: #ffffff; color: #92400e;"> ⏱️ Time Challenge </button>
+      </div>
+      <!-- Game Controls -->
+      <div class="w-full max-w-md mt-4 flex flex-wrap gap-2 justify-center">
+        <button onclick="toggleShuffle()" id="shuffle-btn"
+          class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          style="background-color: #ffffff; color: #92400e;"> 🔀 Shuffle </button>
+        <button onclick="pauseAudio()" id="pause-btn"
+          class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          style="background-color: #ffffff; color: #92400e;"> 🔇 Pause </button>
+        <button onclick="skipAhead()" id="skip-btn"
+          class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          style="background-color: #ffffff; color: #92400e;"> ⏩ +10s </button>
+        <button onclick="changeFolder()" id="change-folder-btn"
+          class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+          style="background-color: #ffffff; color: #92400e;"> 📁 Change Folder </button>
       </div>
     </div>
     <div id="game-layout" class="w-full max-w-6xl flex flex-col md:flex-row items-start gap-6">
-      <div id="player-panel" class="hidden w-full md:w-56 rounded-2xl shadow-lg p-4"
-        style="background-color: #ffffff;">
+      <div id="player-panel" class="hidden w-full md:w-56 rounded-2xl shadow-lg p-4 mt-4" style="background-color: #ffffff;">
         <div class="text-lg font-extrabold mb-3" style="color: #92400e;">Players</div>
         <div id="player-list" class="flex flex-col gap-2"></div>
       </div>
-      <div id="game-main" class="flex-1 w-full flex flex-col items-center"><!-- Game Controls -->
-        <div class="w-full max-w-md mb-4 flex flex-wrap gap-2 justify-center"><button onclick="toggleShuffle()"
-        id="shuffle-btn"
-        class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-        style="background-color: #ffffff; color: #92400e;"> 🔀 Shuffle </button>
-      <button onclick="toggleTimer()" id="timer-btn"
-        class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-        style="background-color: #ffffff; color: #92400e;"> ⏱️ Timer Challenge </button>
-      <button onclick="stopAudio()" id="stop-btn"
-        class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-        style="background-color: #ffffff; color: #92400e;"> 🔇 Stop Music </button>
-      <button onclick="changeFolder()" id="change-folder-btn"
-        class="px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-        style="background-color: #ffffff; color: #92400e;"> 📁 Change Folder </button>
-        </div>   
-
+      <div id="game-main"
+     class="flex-1 w-full flex flex-col items-center">
+       
     <!-- Score and Timer Display -->
     <div class="flex items-center gap-6 mb-4">
-      <div class="text-center px-4 py-2 rounded-full shadow-md" style="background-color: #ffffff;"><span
+      <div id="score-display-container" class="text-center px-4 py-2 rounded-full shadow-md" style="background-color: #ffffff;"><span
           class="text-sm font-bold" style="color: #92400e;">Score: <span id="score-display">0</span></span>
       </div>
       <div id="timer-display" class="hidden text-center px-4 py-2 rounded-full shadow-md"
         style="background-color: #ffffff;"><span class="text-sm font-bold" style="color: #92400e;">⏱️ <span
             id="timer-text">60</span>s</span>
       </div>
-
-    </div><!-- Progress Indicator -->
-    <div class="flex items-center gap-3 mb-6">
+    </div>
+    
+    <!-- Progress Indicator -->
+    <div id="progress-ind" class="flex items-center gap-3 mb-6">
       <div id="progress-dots" class="flex gap-2"><!-- Dots generated by JS -->
-      </div><span id="progress-text" class="text-sm font-bold ml-2" style="color: #92400e;">1 / 10</span>
-
-    </div><!-- Flashcard -->
+      </div><span id="progress-text" class="text-sm font-bold ml-2" style="color: #92400e;">0 / 0</span>
+    </div>
+    
+    <!-- Flashcard -->
     <div class="card-container w-full max-w-md h-64 md:h-72 mb-6 cursor-pointer" id="card" onclick="flipCard()">
       <div class="card-inner" id="card-inner">
         <!-- Front -->
@@ -196,8 +202,11 @@
         style="background-color: #ef4444; color: #ffffff;"> 😕 Learning </button> <button onclick="markCard(true)"
         class="px-6 py-3 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
         style="background-color: #22c55e; color: #ffffff;"> ✅ I Know This! </button>
-    </div>
+    </div><!-- Score Buttons -->
     <div id="score-buttons" class="hidden flex gap-4 mb-4">
+      <button onclick="addScore(0)"
+        class="px-6 py-3 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
+        style="background-color: #ffffff; color: #92400e;">0</button>
       <button onclick="addScore(1)"
         class="px-6 py-3 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
         style="background-color: #ffffff; color: #92400e;">1</button>
@@ -238,6 +247,7 @@
     let viewedCards = new Set();
     let score = 0;
     let isShuffled = false;
+    let isPlaying = true;
     let timerMode = false;
     let timeRemaining = 60;
     let timerInterval = null;
@@ -288,16 +298,25 @@
     function updateModeButtons() {
       const practiceBtn = document.getElementById('practice-mode-btn');
       const gameBtn = document.getElementById('game-mode-btn');
+      const progress = document.getElementById('progress-ind');
+      const gameMain = document.getElementById('game-main');
+      const scoreDisplay = document.getElementById('score-display-container');
       if (mode === 'game') {
         gameBtn.style.backgroundColor = '#92400e';
         gameBtn.style.color = '#ffffff';
         practiceBtn.style.backgroundColor = '#ffffff';
         practiceBtn.style.color = '#92400e';
+        scoreDisplay.classList.add('hidden');
+        progress.classList.add('hidden');
+        gameMain.classList.add('max-w-2xl');
       } else {
+        scoreDisplay.classList.remove('hidden'); 
+        progress.classList.remove('hidden');
         practiceBtn.style.backgroundColor = '#92400e';
         practiceBtn.style.color = '#ffffff';
         gameBtn.style.backgroundColor = '#ffffff';
         gameBtn.style.color = '#92400e';
+        gameMain.classList.remove('max-w-2xl');
       }
     }
 
@@ -437,6 +456,46 @@
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
+      }
+    }
+
+    function pauseAudio() {
+      const btn = document.getElementById('pause-btn'); 
+      isPlaying = !isPlaying;
+      if (currentAudio) {
+        if (isPlaying) {
+          currentAudio.play();
+          btn.style.backgroundColor = '#ffffff';
+          btn.style.color = '#92400e';
+          btn.textContent = '🔇 Pause ';
+        } else {
+          currentAudio.pause();
+          btn.style.backgroundColor = '#92400e';
+          btn.style.color = '#ffffff';
+          btn.textContent = '🔇Paused';
+        }
+      }
+    }
+
+    function skipAhead() {
+      if (!currentAudio) {
+        return;
+      }
+      const seek = () => {
+        const nextTime = currentAudio.currentTime + 10;
+        if (Number.isFinite(currentAudio.duration)) {
+          const safeEnd = Math.max(0, currentAudio.duration - 0.01);
+          currentAudio.currentTime = Math.min(nextTime, safeEnd);
+        } else {
+          currentAudio.currentTime = nextTime;
+        }
+      };
+
+      if (currentAudio.readyState >= 1) {
+        seek();
+      } else {
+        currentAudio.addEventListener('loadedmetadata', seek, { once: true });
+        currentAudio.load();
       }
     }
 
