@@ -150,7 +150,15 @@
       <div id="player-panel" class="hidden w-full md:w-56 rounded-2xl shadow-lg p-4 mt-4" style="background-color: #ffffff;">
         <div class="text-lg font-extrabold mb-3" style="color: #92400e;">Players</div>
         <div id="player-list" class="flex flex-col gap-2"></div>
+        <!-- Player Navigation Buttons -->
+        <div class="flex gap-2"><button onclick="prevPlayer()" id="prev-player-btn"
+            class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+            style="background-color: #ffffff; color: #92400e;"> ← Back </button> <button onclick="nextPlayer()" id="next-player-btn"
+            class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
+            style="background-color: #92400e; color: #ffffff;"> Next → </button>
+        </div>
       </div>
+      <!-- Main Game Area -->
       <div id="game-main"
      class="flex-1 w-full flex flex-col items-center">
        
@@ -376,8 +384,9 @@
       score += points;
       updateScore();
       renderPlayerList();
+      nextPlayer()
       viewedCards.add(currentIndex);
-      renderProgressDots();
+      // renderProgressDots();
 
       setTimeout(() => {
         if (currentIndex < flashcards.length - 1) {
@@ -712,14 +721,6 @@
     }
 
     function nextCard() {
-      if (mode === 'game') {
-        if (!players.length) {
-          return;
-        }
-        const nextIndex = (currentPlayerIndex + 1) % players.length;
-        setActivePlayer(nextIndex);
-        return;
-      }
       if (currentIndex < flashcards.length - 1) {
         currentIndex++;
         resetCardFlip();
@@ -730,19 +731,27 @@
     }
 
     function prevCard() {
-      if (mode === 'game') {
-        if (!players.length) {
-          return;
-        }
-        const prevIndex = (currentPlayerIndex - 1 + players.length) % players.length;
-        setActivePlayer(prevIndex);
-        return;
-      }
       if (currentIndex > 0) {
         currentIndex--;
         resetCardFlip();
         updateCard();
       }
+    }
+
+
+    function prevPlayer() {
+      if (!players.length) {
+        return;
+      }
+      const prevIndex = (currentPlayerIndex - 1 + players.length) % players.length;
+      setActivePlayer(prevIndex);
+    }
+    function nextPlayer() {
+      if (!players.length) {
+        return;
+      }
+      const nextIndex = (currentPlayerIndex + 1) % players.length;
+      setActivePlayer(nextIndex);
     }
 
     function resetCardFlip() {
