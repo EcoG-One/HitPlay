@@ -13,10 +13,11 @@ import os
 import sys
 import random
 import time
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from flask import Flask, send_from_directory, abort, Response
+from werkzeug.serving import make_server
 import pygetwindow as gw
 from pathlib import Path
-from urllib.parse import quote, unquote, urlsplit
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 from mutagen.flac import FLAC
 from mutagen.easyid3 import EasyID3
@@ -299,77 +300,69 @@ def write_flashcards_json(flashcards, output_path):
     print(f"Wrote JSON to {output_path}")
 
 
-def make_handler(base_dir, state):
-    class MusicHandler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(base_dir), **kwargs)
+def create_app(directory, state):
+    app = Flask(__name__, static_folder=None)
 
-        def do_GET(self):
-            request_path = urlsplit(self.path).path
-            if request_path == "/change-folder":
-                try:
-                    runner = state.get("dialog_runner")
-                    if runner:
-                        event = threading.Event()
-                        result = {"value": ""}
+    @app.get("/change-folder")
+    def change_folder():
+        try:
+            runner = state.get("dialog_runner")
+            if runner:
+                event = threading.Event()
+                result = {"value": ""}
 
-                        def on_selected(path):
-                            result["value"] = path
-                            event.set()
+                def on_selected(path):
+                    result["value"] = path
+                    event.set()
 
-                        runner.folder_selected.connect(on_selected, Qt.QueuedConnection)
-                        QMetaObject.invokeMethod(
-                            runner, "choose_folder", Qt.QueuedConnection
-                        )
-                        event.wait(timeout=120)
-                        runner.folder_selected.disconnect(on_selected)
-                        new_folder = result["value"]
-                    else:
-                        new_folder = select_directory_dialog()
-                    if new_folder:
-                        state["music_dir"] = new_folder
-                        state["settings"]["music_folder"] = new_folder
-                        state["json_file"] = Path(new_folder) / "flashcards.json"
-                        save_json(state["settings_file"], state["settings"])
-                        flashcards = generate_flashcards(new_folder)
-                        if flashcards:
-                            write_flashcards_json(flashcards, state["json_file"])
-                    self.send_response(204)
-                    self.end_headers()
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header("Content-Type", "text/plain; charset=utf-8")
-                    self.end_headers()
-                    self.wfile.write(str(e).encode("utf-8"))
-                return
-            try:
-                super().do_GET()
-            except (ConnectionResetError, BrokenPipeError) as exc:
-                self.log_error("Client disconnected during GET: %s", exc)
-            except OSError as exc:
-                if getattr(exc, "winerror", None) == 10054:
-                    self.log_error("Client disconnected during GET: %s", exc)
-                    return
-                raise
+                runner.folder_selected.connect(on_selected, Qt.QueuedConnection)
+                QMetaObject.invokeMethod(runner, "choose_folder", Qt.QueuedConnection)
+                event.wait(timeout=120)
+                runner.folder_selected.disconnect(on_selected)
+                new_folder = result["value"]
+            else:
+                new_folder = select_directory_dialog()
+            if new_folder:
+                state["music_dir"] = new_folder
+                state["settings"]["music_folder"] = new_folder
+                state["json_file"] = Path(new_folder) / "flashcards.json"
+                save_json(state["settings_file"], state["settings"])
+                flashcards = generate_flashcards(new_folder)
+                if flashcards:
+                    write_flashcards_json(flashcards, state["json_file"])
+            return Response(status=204)
+        except Exception as e:
+            return Response(str(e), status=500, mimetype="text/plain")
 
-        def translate_path(self, path):
-            request_path = urlsplit(path).path
-            if request_path.startswith("/music/"):
-                rel = unquote(request_path[len("/music/") :])
-                return str(Path(state["music_dir"]) / rel)
-            if request_path == "/flashcards.json":
-                return str(state["json_file"])
-            return super().translate_path(request_path)
+    @app.get("/music/<path:filename>")
+    def music_file(filename):
+        return send_from_directory(state["music_dir"], filename)
 
-    return MusicHandler
+    @app.get("/flashcards.json")
+    def flashcards_json():
+        json_path = state.get("json_file")
+        if not json_path or not Path(json_path).exists():
+            abort(404)
+        return send_from_directory(Path(json_path).parent, Path(json_path).name)
+
+    @app.get("/health")
+    def health():
+        return Response("ok", status=200, mimetype="text/plain")
+
+    @app.get("/")
+    @app.get("/<path:filename>")
+    def static_files(filename="index.html"):
+        return send_from_directory(directory, filename)
+
+    return app
 
 
 def serve_directory(directory, host, port, state):
     """
     Serve static files from the given directory.
     """
-    handler = make_handler(directory, state)
-    server = ThreadingHTTPServer((host, port), handler)
+    app = create_app(directory, state)
+    server = make_server(host, port, app, threaded=True)
     print(f"Serving {directory} at http://{host}:{port}/")
     print(f"Open http://{host}:{port}/index.html")
     print(
