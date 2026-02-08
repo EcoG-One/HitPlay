@@ -150,13 +150,21 @@
       <div id="player-panel" class="hidden w-full md:w-56 rounded-2xl shadow-lg p-4 mt-4" style="background-color: #ffffff;">
         <div class="text-lg font-extrabold mb-3" style="color: #92400e;">Players</div>
         <div id="player-list" class="flex flex-col gap-2"></div>
-        <!-- Player Navigation Buttons -->
+        <div class="flex gap-2 mt-3">
+          <button onclick="addSelectedPlayerScore(1)" id="player-add-btn"
+            class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
+            style="background-color: #ffffff; color: #92400e;">+</button>
+          <button onclick="addSelectedPlayerScore(-1)" id="player-sub-btn"
+            class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
+            style="background-color: #ffffff; color: #92400e;">-</button>
+        </div>
+        <!-- Player Navigation Buttons 
         <div class="flex gap-2"><button onclick="prevPlayer()" id="prev-player-btn"
             class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             style="background-color: #ffffff; color: #92400e;"> ← Back </button> <button onclick="nextPlayer()" id="next-player-btn"
             class="px-3 py-1 rounded-full font-bold text-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg"
             style="background-color: #92400e; color: #ffffff;"> Next → </button>
-        </div>
+        </div> -->
       </div>
       <!-- Main Game Area -->
       <div id="game-main"
@@ -264,6 +272,7 @@
     let mode = 'practice';
     let players = [];
     let currentPlayerIndex = 0;
+    let selectedPlayerIndex = null;
 
     const defaultConfig = {
       deck_title: "Pop Rock Classics",
@@ -282,6 +291,7 @@
         mode = 'practice';
         players = [];
         currentPlayerIndex = 0;
+        selectedPlayerIndex = null;
         document.getElementById('player-panel').classList.add('hidden');
         updateModeButtons();
         restart();
@@ -296,6 +306,7 @@
         mode = 'game';
         players = names.map(name => ({ name, score: 0 }));
         currentPlayerIndex = 0;
+        selectedPlayerIndex = null;
         renderPlayerList();
         document.getElementById('player-panel').classList.remove('hidden');
         updateModeButtons();
@@ -350,7 +361,10 @@
       players.forEach((player, index) => {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between px-3 py-2 rounded-xl font-bold';
-        if (index === currentPlayerIndex) {
+        if (index === selectedPlayerIndex) {
+          item.style.backgroundColor = '#fee2e2';
+          item.style.color = '#dc2626';
+        } else if (index === currentPlayerIndex) {
           item.style.backgroundColor = '#fef3c7';
           item.style.color = '#92400e';
         } else {
@@ -358,14 +372,30 @@
           item.style.color = '#92400e';
           item.style.border = '1px solid #fde68a';
         }
+        item.onclick = () => {
+          item.style.backgroundColor = '#fee2e2';
+          item.style.color = '#dc2626';
+        };
         const nameSpan = document.createElement('span');
         nameSpan.textContent = player.name;
         const scoreSpan = document.createElement('span');
         scoreSpan.textContent = player.score;
+        item.onclick = () => {
+          selectedPlayerIndex = selectedPlayerIndex === index ? null : index;
+          renderPlayerList();
+        };
         item.appendChild(nameSpan);
         item.appendChild(scoreSpan);
         list.appendChild(item);
       });
+    }
+
+    function addSelectedPlayerScore(delta) {
+      if (!players.length || selectedPlayerIndex === null) {
+        return;
+      }
+      players[selectedPlayerIndex].score += delta;
+      renderPlayerList();
     }
 
     function setActivePlayer(nextIndex) {
@@ -383,6 +413,7 @@
       players[currentPlayerIndex].score += points;
       score += points;
       updateScore();
+      selectedPlayerIndex = null;
       renderPlayerList();
       nextPlayer()
       viewedCards.add(currentIndex);
@@ -752,7 +783,7 @@
       }
       const nextIndex = (currentPlayerIndex + 1) % players.length;
       setActivePlayer(nextIndex);
-    }
+    }  
 
     function resetCardFlip() {
       isFlipped = false;
