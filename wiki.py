@@ -171,23 +171,23 @@ def get_song_release_date(title: str, artist: str) -> str:
                 released = _parse_released_from_infobox(infobox, artist)
                 if released:
                     return released
-        return ""
+            else:
 
-    # 3) try "<title> (<artist> song)"
-    # sanitize artist for title use: remove problematic slashes and parentheses
-    artist_for_title = re.sub(r"[\/\(\)]", "", artist).strip()
-    alt2 = f"{title} ({artist_for_title} song)"
-    page = _fetch_page_info(alt2)
-    if page:
-        revs = page.get("revisions") or []
-        if revs:
-            content = revs[0].get("slots", {}).get("main", {}).get("*", "") or ""
-            infobox = _extract_infobox_wikitext(content)
-            if infobox:
-                released = _parse_released_from_infobox(infobox, artist)
-                if released:
-                    return released
-        return ""
+                # 3) try "<title> (<artist> song)"
+                # sanitize artist for title use: remove problematic slashes and parentheses
+                artist_for_title = re.sub(r"[\/\(\)]", "", artist).strip()
+                alt2 = f"{title} ({artist_for_title} song)"
+                page = _fetch_page_info(alt2)
+                if page:
+                    revs = page.get("revisions") or []
+                    if revs:
+                        content = revs[0].get("slots", {}).get("main", {}).get("*", "") or ""
+                        infobox = _extract_infobox_wikitext(content)
+                        if infobox:
+                            released = _parse_released_from_infobox(infobox, artist)
+                            if released:
+                                return released
+                    return ""
 
     # nothing found
     return ""
